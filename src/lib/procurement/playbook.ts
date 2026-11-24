@@ -1,0 +1,45 @@
+import type { Playbook, Category } from './types';
+
+const category = (unit: string, gst: number, target: number, walkaway: number, rounds: number, beta: number, approval: number): Category => ({ unit, gst, target, walkaway, rounds, beta, approval });
+export const officialPlaybook: Playbook = {
+  version: 'ACME-2026.12 · supplied baseline',
+  source: 'User-supplied category, supplier, amendment and precedent values; attached Acme policies.',
+  categories: {
+    catering: category('per meal', 5, 280, 340, 3, 1, 600000),
+    cleaning: category('per site per month', 18, 85000, 100000, 4, 2, 900000),
+    'cloud-servers': category('per server per year', 18, 96000, 115000, 5, 3, 6000000),
+    courier: category('per shipment', 18, 160, 200, 4, 2, 500000),
+    'crm-licenses': category('per seat per year', 18, 18000, 22000, 4, 2, 2500000),
+    'design-software': category('per seat per year', 18, 30000, 36000, 4, 2, 1500000),
+    headsets: category('per headset', 18, 3500, 4200, 3, 1, 400000),
+    laptops: category('per laptop', 18, 62000, 70000, 4, 2, 4000000),
+    'led-lighting': category('per fixture', 18, 1800, 2200, 3, 1, 350000),
+    'mobile-phones': category('per phone', 18, 24000, 28000, 4, 2, 2000000),
+    monitors: category('per monitor', 18, 14000, 16500, 3, 1, 1200000),
+    'office-chairs': category('per chair', 18, 9000, 11000, 3, 1, 700000),
+    'printer-paper': category('per box', 12, 2200, 2600, 3, 1, 250000),
+    'security-guards': category('per guard per month', 18, 21000, 25000, 4, 2, 1000000),
+    training: category('per participant', 18, 6000, 7500, 3, 1, 900000),
+  },
+  amendments: [
+    { id: 'AMD-04', date: '2026-09-20', category: 'catering', field: 'target', value: 270 },
+    { id: 'AMD-01', date: '2026-09-22', category: 'courier', field: 'walkaway', value: 210 },
+    { id: 'AMD-05', date: '2026-11-06', category: 'printer-paper', field: 'walkaway', value: 2780 },
+    { id: 'AMD-06', date: '2026-11-09', category: 'headsets', field: 'approval', value: 320000 },
+    { id: 'AMD-02', date: '2026-11-11', category: 'cloud-servers', field: 'walkaway', value: 119990 },
+    { id: 'AMD-03', date: '2026-11-25', category: 'mobile-phones', field: 'walkaway', value: 29780 },
+    { id: 'AMD-08', date: '2026-12-04', category: 'led-lighting', field: 'walkaway', value: 2330 },
+    { id: 'AMD-07', date: '2026-12-05', category: 'led-lighting', field: 'walkaway', value: 2360 },
+    { id: 'AMD-09', date: '2026-12-14', category: 'monitors', field: 'approval', value: 960000 },
+  ],
+  suppliers: {
+    'GreenLeaf Facility Care': { status: 'BLACKLISTED' }, 'Lumen Workspace': { status: 'BLACKLISTED' }, 'Orbit Electronics': { status: 'BLACKLISTED' },
+    'Banyan Guarding': { status: 'PROBATION' }, 'Jade Express': { status: 'PROBATION' }, 'Vertex Mobile': { status: 'PROBATION' }, 'Zephyr SaaS': { status: 'PROBATION' },
+    'Helix CRM': { caps: { catering: 400 } }, 'Ivory Events Catering': { caps: { headsets: 4400 } },
+    'Jupiter Devices': { caps: { monitors: 17600 } }, 'Kite Electricals': { caps: { 'office-chairs': 11400 } },
+    'Monsoon Foods': { caps: { headsets: 4500 } }, 'Xenon Displays': { caps: { 'led-lighting': 2300 } },
+    'Arvind Office Supplies': { fx: { GBP: 104.5 } }, 'Aster Cleaning Co': { fx: { USD: 84 } },
+    'Falcon Security Services': { fx: { GBP: 105.5 } }, 'Kestrel Learning': { fx: { EUR: 90.5 } },
+  },
+  fx: { INR: 1, USD: 84.5, EUR: 91, GBP: 106 },
+};

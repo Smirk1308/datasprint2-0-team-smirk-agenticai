@@ -1,0 +1,10 @@
+export type Action = 'ACCEPT' | 'COUNTER' | 'REJECT' | 'ESCALATE';
+export type Thread = { thread_id: string; date: string; supplier: string; category: string; quantity: number; round: number; our_last_counter: number | null; supplier_message: string };
+export type Category = { unit: string; gst: number; target: number; walkaway: number; rounds: number; beta: number; approval: number };
+export type Amendment = { id: string; date: string; category: string; field: 'target' | 'walkaway' | 'approval'; value: number };
+export type Supplier = { status?: 'BLACKLISTED' | 'PROBATION'; caps?: Record<string, number>; fx?: Record<string, number> };
+export type Playbook = { version: string; source: string; categories: Record<string, Category>; amendments: Amendment[]; suppliers: Record<string, Supplier>; fx: Record<string, number> };
+export type AuditStep = { title: string; detail: string; source: string; status: 'pass' | 'stop' | 'info' };
+export type Result = { thread: Thread; action: Action; reason: string; label: string; price: number | null; limit: number | null; total: number | null; audit: AuditStep[]; error?: string };
+export type Verification = { total: number; matched: number; mismatches: { id: string; expected: string; actual: string }[] };
+export type Run = { id: string; name: string; workspace_id: string; created_by: string; created_at: string; policy_version: string; results: Result[]; verification: Verification | null };
