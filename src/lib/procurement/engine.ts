@@ -44,7 +44,7 @@ export function bannedEvidence(text: string): string | null {
   for (const clause of text.split(/[\n;]|\.(?:\s+|$)/)) {
     if (/auto[- ]?renew|automatic renewal|continues (?:from )?year to year|renews on its own|renew(?:s|al)? automatically/i.test(clause) && !/no (?:automatic\s+|auto[- ]?)renewal|does not auto[- ]?renew|will not (?:automatically )?renew|renewal only (?:by mutual agreement|if both parties sign again)/i.test(clause)) return clause.trim();
     if (/unlimited/.test(clause.toLowerCase()) && /acme.{0,50}liability|liability.{0,50}acme/i.test(clause) && !/not unlimited|no unlimited liability/i.test(clause)) return clause.trim();
-    if (/exclusive supplier|exclusivity|buy only from|sole supplier/i.test(clause) && !/not asking for exclusivity|no exclusivity|non-exclusive|not.{0,15}exclusive/i.test(clause)) return clause.trim();
+    if (/exclusive supplier|exclusivity|sole supplier|only from (?:us|this supplier)|buy (?:these items |everything )?(?:exclusively|only) from/i.test(clause) && !/not asking for exclusivity|no exclusivity|non-exclusive|not.{0,15}exclusive/i.test(clause)) return clause.trim();
     if (/upfront|advance/i.test(clause)) {
       for (const m of clause.matchAll(/(\d+(?:\.\d+)?)\s*%/g)) if (Number(m[1]) > 30) return clause.trim();
       const m = clause.match(/([a-z -]+)\s+(?:percent|per cent)/i);
@@ -101,14 +101,24 @@ function normalize(text: string, thread: Thread, book: Playbook, previous: strin
   if (/per dozen/i.test(suffix)) { p /= 12; notes.push('Per-dozen price divided by 12.'); }
   if (thread.category === 'led-lighting' && /per pack of 4/i.test(suffix)) { p /= 4; notes.push('Pack of four fixtures divided by 4.'); }
   if (thread.category === 'printer-paper' && /per ream/i.test(suffix)) { p *= 10; notes.push('Ten reams per normalized box: multiply by 10.'); }
+  const perN = suffix.match(/\bper\s+(\d+)\s+[a-z]+/i);
+  if (perN && Number(perN[1]) > 1) {
+    p /= Number(perN[1]);
+    notes.push(`Per ${perN[1]} sub-units quote divided by ${perN[1]}.`);
+  }
   if (subscription && monthly && category.unit.includes('per year')) { p *= 12; notes.push('Monthly subscription annualized: multiply by 12 (P-06).'); }
   if (subscription && yearly && category.unit.includes('per month')) { p /= 12; notes.push('Annual subscription converted to monthly: divide by 12.'); }
   const listDiscount = text.match(/(\d+(?:\.\d+)?)\s*%\s*(?:off|discount)[\s\S]{0,40}list price/i);
   if (listDiscount) { p *= 1 - Number(listDiscount[1]) / 100; notes.push(`${listDiscount[1]}% list-price discount applied.`); }
   const bonus = text.match(/(?:plus\s+)?(?:1|one)\s+(?:\w+\s+)?free(?:\s+\w+)?\s+for every\s+(\d+)/i);
   if (bonus) { const n = Number(bonus[1]); p *= n / (n + 1); notes.push(`Volume bonus: multiply by ${n}/${n + 1} (P-02/P-05).`); }
+  const volumeOrders = text.match(/further\s+(\d+)%\s+off for orders of\s+(\d+)\s+[a-z]+\s+or more/i);
+  if (volumeOrders && thread.quantity >= Number(volumeOrders[2])) {
+    p *= 1 - Number(volumeOrders[1]) / 100;
+    notes.push(`Eligible volume discount applied: ${volumeOrders[1]}% off for orders >= ${volumeOrders[2]}.`);
+  }
   const volume = text.match(/(\d+(?:\.\d+)?)\s*%\s*(?:off|discount)[\s\S]{0,70}(?:at least|minimum of|over|above)\s+(\d+)/i);
-  if (volume && !listDiscount) {
+  if (volume && !listDiscount && !volumeOrders) {
     const inclusive = /at least|minimum of/i.test(volume[0]);
     if (inclusive ? thread.quantity >= Number(volume[2]) : thread.quantity > Number(volume[2])) { p *= 1 - Number(volume[1]) / 100; notes.push('Eligible quantity-based discount applied.'); }
   }
@@ -143,11 +153,12 @@ export function evaluate(thread: Thread, book: Playbook): Result {
     const changes = policy.applied.map(a => `${a.id}: ${a.field} = ${a.value}`).join('; ');
     step('05 · Effective policy', `Target ${policy.category.target}; walk-away ${policy.category.walkaway}; R=${policy.category.rounds}; β=${policy.category.beta}.${changes ? ' Amendments: ' + changes + '.' : ''}${policy.cap !== undefined ? ' Supplier contract cap takes precedence.' : ''}`, `categories/${thread.category}; amendments; suppliers`, 'info');
     step('05 · Concession level', `L(${thread.round}) = ${policy.limit}; normalized offer = ${offer.price}. ${policy.supplier.status === 'PROBATION' ? 'Probation fixes the level at target.' : 'Full precision retained for comparisons.'}`, 'concession-schedule.md');
-    if (offer.price! > policy.limit) {
+    const EPS = 1e-9;
+    if (offer.price! > policy.limit + EPS) {
       if (thread.round >= policy.category.rounds) { step('05 · Final-round decision', 'Offer exceeds the permissible level on the final round.', 'decision-procedure.md §5', 'stop'); return finish('REJECT', 'ABOVE_WALKAWAY'); }
       step('05 · Counteroffer', 'Offer exceeds the current level; counter at L(r), rounded half-up.', 'decision-procedure.md §5; output-format.md', 'stop'); return finish('COUNTER', 'COUNTER_OFFER', policy.limit);
     }
-    if (result.total! > policy.category.approval) { step('06 · Approval authority', `Total ${result.total} exceeds approval limit ${policy.category.approval}.`, 'approval-limits.md; decision-procedure.md §6', 'stop'); return finish('ESCALATE', 'OVER_APPROVAL_LIMIT'); }
+    if (result.total! > policy.category.approval + EPS) { step('06 · Approval authority', `Total ${result.total} exceeds approval limit ${policy.category.approval}.`, 'approval-limits.md; decision-procedure.md §6', 'stop'); return finish('ESCALATE', 'OVER_APPROVAL_LIMIT'); }
     step('06 · Approval authority', `Total ${result.total} is within approval limit ${policy.category.approval}.`, 'approval-limits.md; decision-procedure.md §6');
     return finish('ACCEPT', 'ACCEPTABLE_PRICE');
   } catch (error) {
