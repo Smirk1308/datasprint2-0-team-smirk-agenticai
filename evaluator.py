@@ -534,22 +534,49 @@ class PlaybookEvaluator:
                 return f'COUNTER:COUNTER_OFFER:{counter_price}'
 
 if __name__ == '__main__':
+    print("================================================================================")
+    print("🛒 Acme Autonomous Procurement Agent — DataSprint 2.0 Evaluation Engine")
+    print("================================================================================")
     evaluator = PlaybookEvaluator()
-    sample_df = pd.read_csv('sample_threads.csv')
-    answers_df = pd.read_csv('sample_answers.csv')
     
-    correct = 0
-    total = len(sample_df)
+    # 1. Benchmark on Sample Dataset (40 Threads)
+    if os.path.exists('sample_threads.csv') and os.path.exists('sample_answers.csv'):
+        sample_df = pd.read_csv('sample_threads.csv')
+        answers_df = pd.read_csv('sample_answers.csv')
+        
+        correct = 0
+        total = len(sample_df)
+        
+        for i, r in sample_df.iterrows():
+            pred = evaluator.evaluate_thread(r)
+            actual = answers_df.iloc[i]['label']
+            if pred == actual:
+                correct += 1
+            else:
+                print(f'MISMATCH [{r.thread_id}]: pred={pred} vs actual={actual}')
+                
+        print(f'🎯 Sample Benchmark Accuracy: {correct}/{total} ({correct/total*100:.2f}%)')
     
-    for i, r in sample_df.iterrows():
-        pred = evaluator.evaluate_thread(r)
-        actual = answers_df.iloc[i]['label']
-        match = (pred == actual)
-        if match:
-            correct += 1
-        else:
-            print(f'MISMATCH [{r.thread_id}]: pred={pred} vs actual={actual}')
-            earlier, latest = evaluator.split_thread(r.supplier_message)
-            print('  Latest:', latest.strip())
-            
-    print(f'\nAccuracy: {correct}/{total} ({correct/total*100:.1f}%)')
+    # 2. Full Inference on Test Dataset (2,000 Threads) -> Generate submission.csv
+    threads_path = 'threads.csv' if os.path.exists('threads.csv') else os.path.join('public', 'data', 'threads.csv')
+    if os.path.exists(threads_path):
+        print(f"\n🚀 Running full evaluation on {threads_path} (2,000 threads)...")
+        threads_df = pd.read_csv(threads_path)
+        predictions = [evaluator.evaluate_thread(r) for _, r in threads_df.iterrows()]
+        
+        sub = pd.DataFrame({
+            'thread_id': threads_df['thread_id'],
+            'label': predictions
+        })
+        sub.to_csv('submission.csv', index=False)
+        print(f"✅ Generated submission.csv successfully ({len(sub)} rows).")
+        print("\n📊 Decision Breakdown:")
+        print(sub['label'].apply(lambda x: x.split(':')[0]).value_counts().to_string())
+        
+        # Verify match with submission_v6_final.csv if present
+        if os.path.exists('submission_v6_final.csv'):
+            ref_sub = pd.read_csv('submission_v6_final.csv')
+            match_count = (sub['label'] == ref_sub['label']).sum()
+            print(f"\n🔍 Integrity Check vs Kaggle 1.00000 Submission: {match_count}/{len(sub)} ({match_count/len(sub)*100:.2f}% Match)")
+            assert match_count == len(sub), "Critical mismatch detected with final submission!"
+    print("================================================================================")
