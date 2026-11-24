@@ -44,7 +44,9 @@ def words_to_number(text):
     return total
 
 class PlaybookEvaluator:
-    def __init__(self, playbook_dir='playbook/playbook'):
+    def __init__(self, playbook_dir=None):
+        if playbook_dir is None:
+            playbook_dir = 'playbook/playbook' if os.path.isdir('playbook/playbook') else 'playbook'
         self.playbook_dir = playbook_dir
         self.categories = {}
         self.amendments = []
